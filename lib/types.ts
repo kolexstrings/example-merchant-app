@@ -1,3 +1,99 @@
+// API Response Types
+export interface Plan {
+  id: string;
+  merchant: string;
+  name: string;
+  priceInCents: string;
+  currency: string;
+  billingIntervalSeconds: string;
+  allowedTokens: string[];
+  active: boolean;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
+
+export interface MerchantPlansResponse {
+  success: boolean;
+  data: Plan[];
+}
+
+export interface SubscriptionRequest {
+  planId: number;
+  payerToken: string;
+  subscriberEmail: string;
+}
+
+export interface SubscriptionResponse {
+  success: boolean;
+  data: {
+    subscriptionId: string;
+    status: string;
+    message: string;
+  };
+}
+
+// Token mapping system
+export interface TokenInfo {
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+}
+
+export const TOKEN_MAPPING: Record<string, TokenInfo> = {
+  '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582': {
+    address: '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582',
+    name: 'Wrapped Ethereum',
+    symbol: 'WETH',
+    decimals: 18
+  },
+  '0xA0b86a33E6441A8c5e4D6E5E5E5E5E5E5E5E5E5E5': {
+    address: '0xA0b86a33E6441A8c5e4D6E5E5E5E5E5E5E5E5E5E5',
+    name: 'USD Coin',
+    symbol: 'USDC',
+    decimals: 6
+  },
+  '0x6B175474E89094C44Da98b954EedeAC495271d0F': {
+    address: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+    name: 'Dai Stablecoin',
+    symbol: 'DAI',
+    decimals: 18
+  },
+  '0xdAC17F958D2ee523a2206206994597C13D831ec7': {
+    address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    name: 'Tether USD',
+    symbol: 'USDT',
+    decimals: 6
+  }
+};
+
+export const getTokenInfo = (address: string): TokenInfo | null => {
+  return TOKEN_MAPPING[address] || null;
+};
+
+export const formatTokenAmount = (amountInCents: string, tokenAddress: string): string => {
+  const token = getTokenInfo(tokenAddress);
+  if (!token) return `${amountInCents} units`;
+
+  const amount = parseFloat(amountInCents);
+  const formattedAmount = (amount / Math.pow(10, token.decimals)).toFixed(6);
+  return `${formattedAmount} ${token.symbol}`;
+};
+
+export const getAllTokens = (): TokenInfo[] => {
+  return Object.values(TOKEN_MAPPING);
+};
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
@@ -7,13 +103,6 @@ export interface SubscriptionPlan {
   features: string[];
   description: string;
   popular?: boolean;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: string;
 }
 
 export interface AuthState {
