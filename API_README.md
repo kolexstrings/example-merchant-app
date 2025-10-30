@@ -28,9 +28,9 @@ The application integrates with the following API endpoints:
 - **Description**: Retrieves detailed information about a specific subscription plan
 - **Usage**: Shows plan details when a user clicks on a plan card
 
-### 3. Create Subscription
+### 3. Create a subscription
 - **Endpoint**: `POST /api/subscriptions`
-- **Description**: Creates a new subscription for a user
+- **Description**: Creates a new subscription for a user and returns a payment link
 - **Request Body**:
 ```json
 {
@@ -39,7 +39,21 @@ The application integrates with the following API endpoints:
   "subscriberEmail": "user@example.com"
 }
 ```
-- **Usage**: Called when a user completes the subscription process
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Subscription created successfully",
+  "data": {
+    "subscriptionId": "13",
+    "transactionHash": "0xf499687e9fabfa78159dd687d81f93b2b9f3e9ae2163982f29df9a337c49bc5c",
+    "invoiceNumber": "INV-13-1761583078332",
+    "invoiceDueAt": "2025-10-28T04:37:55.720Z",
+    "paymentLink": "https://your-domain.com/payment?subscriptionId=13"
+  }
+}
+```
+- **Usage**: After subscription creation, users are automatically redirected to the payment link to complete their payment
 
 ## Token Integration
 

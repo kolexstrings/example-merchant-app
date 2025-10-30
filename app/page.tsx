@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import PlanCard from '@/components/PlanCard';
 import PlanDetail from '@/components/PlanDetail';
-import { Plan, SubscriptionPlan } from '@/lib/types';
+import { Plan, SubscriptionPlan, SubscriptionResponse } from '@/lib/types';
 import {
   getMerchantPlans,
   mockGetMerchantPlans,
@@ -13,7 +13,8 @@ import {
 } from '@/lib/api';
 import { AuthProvider } from '@/contexts/AuthContext';
 
-const MERCHANT_ADDRESS = '0xa5819482339b0e914ab12f98265fdb0e6400bf91';
+// Dynamic default for Next.js SSR/CSR
+const MERCHANT_ADDRESS = process.env.NEXT_PUBLIC_MERCHANT_WALLET_ADDRESS || '0x9e82428d48f3a5DBCAC584Aa3746d2d182A12d5d';
 
 function SubscriptionApp() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -73,17 +74,29 @@ function SubscriptionApp() {
       };
 
       // Try real API first, fall back to mock if it fails
+      let result: SubscriptionResponse;
       try {
-        const result = await createSubscription(subscriptionData);
-        console.log('Subscription created:', result);
+        result = await createSubscription(subscriptionData);
       } catch (error) {
         console.log('Using mock subscription');
-        const result = await mockCreateSubscription(subscriptionData);
-        console.log('Mock subscription created:', result);
+        result = await mockCreateSubscription(subscriptionData);
       }
 
-      alert(`✅ Subscription successful!\n\nPlan: ${selectedPlan.name}\nEmail: ${userEmail}\nToken: ${selectedToken}\n\nYour subscription has been created successfully!`);
-      setSelectedPlan(null);
+      console.log('Subscription created:', result);
+
+      // Redirect to payment link instead of showing alert
+      if (result.success && result.data.paymentLink) {
+        console.log('Redirecting to payment link:', result.data.paymentLink);
+
+        // In development, show alert with payment link instead of redirecting
+        if (process.env.NODE_ENV === 'development') {
+          alert(`✅ Subscription created successfully!\n\nPlan: ${selectedPlan.name}\nEmail: ${userEmail}\nToken: ${selectedToken}\nPayment Link: ${result.data.paymentLink}\n\nIn production, you would be redirected to this payment link.`);
+        } else {
+          window.location.href = result.data.paymentLink;
+        }
+      } else {
+        alert('❌ Failed to create subscription. Please try again.');
+      }
     } catch (error) {
       console.error('Failed to create subscription:', error);
       alert('❌ Failed to create subscription. Please try again.');

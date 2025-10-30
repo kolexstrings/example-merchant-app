@@ -174,12 +174,12 @@ export default function PlanDetail({
           disabled={!selectedToken}
           className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 text-lg"
         >
-          Subscribe Now
-          {selectedToken && ` - Pay with ${getTokenInfo(selectedToken)?.symbol || 'Selected Token'}`}
+          Subscribe & Pay
+          {selectedToken && ` with ${getTokenInfo(selectedToken)?.symbol || 'Selected Token'}`}
         </button>
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-          30-day money-back guarantee • Cancel anytime
+          You will be redirected to complete payment after subscription creation
         </p>
       </div>
     </div>

@@ -28,10 +28,13 @@ export interface SubscriptionRequest {
 
 export interface SubscriptionResponse {
   success: boolean;
+  message: string;
   data: {
     subscriptionId: string;
-    status: string;
-    message: string;
+    transactionHash: string;
+    invoiceNumber: string;
+    invoiceDueAt: string;
+    paymentLink: string;
   };
 }
 

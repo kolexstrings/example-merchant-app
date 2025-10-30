@@ -18,40 +18,30 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   if (!process.env.NEXT_PUBLIC_MERCHANT_API_KEY) {
-    console.error(
-      "NEXT_PUBLIC_MERCHANT_API_KEY is not set in environment variables"
-    );
+    console.error('NEXT_PUBLIC_MERCHANT_API_KEY is not set in environment variables');
   }
   const url = `${API_BASE_URL}${endpoint}`;
-
-  console.log("Debug - Auth Token:", {
-    tokenPresent: !!process.env.NEXT_PUBLIC_MERCHANT_API_KEY,
-    tokenPrefix:
-      process.env.NEXT_PUBLIC_MERCHANT_API_KEY?.substring(0, 5) + "...",
-  });
 
   const response = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_MERCHANT_API_KEY || ""}`,
+      "Authorization": `Bearer ${process.env.NEXT_PUBLIC_MERCHANT_API_KEY || ''}`,
       ...options.headers,
     },
     ...options,
   });
 
   if (!response.ok) {
-    console.error("API Request Details:", {
+    console.error('API Request Details:', {
       status: response.status,
       statusText: response.statusText,
       url: url,
       headers: Object.fromEntries(response.headers.entries()),
-      apiKey: process.env.MERCHANT_API_KEY ? "Set" : "Not Set",
+      apiKey: process.env.NEXT_PUBLIC_MERCHANT_API_KEY ? 'Set' : 'Not Set'
     });
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
-      `API request failed: ${response.status} ${
-        response.statusText
-      }\n${JSON.stringify(errorData, null, 2)}`
+      `API request failed: ${response.status} ${response.statusText}\n${JSON.stringify(errorData, null, 2)}`
     );
   }
 
@@ -63,8 +53,7 @@ export async function getMerchantPlans(
   merchantAddress?: string
 ): Promise<Plan[]> {
   try {
-    const address =
-      merchantAddress || process.env.NEXT_PUBLIC_MERCHANT_WALLET_ADDRESS;
+    const address = merchantAddress || process.env.NEXT_PUBLIC_MERCHANT_WALLET_ADDRESS;
     if (!address) {
       throw new Error("Merchant wallet address is required");
     }

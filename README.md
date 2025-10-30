@@ -17,7 +17,7 @@ The application integrates with the following BillingBase API endpoints:
 
 - `GET /api/plans/merchant/{address}` - Fetch all plans for a merchant
 - `GET /api/plans/{id}` - Get detailed plan information
-- `POST /api/subscriptions` - Create new subscriptions
+- **POST /api/subscriptions** - Create new subscriptions with automatic payment redirect
 
 ## Environment Setup
 
@@ -26,6 +26,9 @@ Create a `.env.local` file to configure the API connection:
 ```bash
 # API Configuration
 NEXT_PUBLIC_API_BASE_URL=https://api.billingbase.com
+
+# Set to 'production' to enable automatic payment redirects
+NODE_ENV=production
 ```
 
 ## Getting Started
@@ -42,7 +45,7 @@ Run the development server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+Open [http://localhost:5000](http://localhost:5000) to view the application.
 
 ## Project Structure
 
@@ -60,7 +63,36 @@ The application supports the following payment tokens:
 - **DAI** (Dai Stablecoin)
 - **USDT** (Tether USD)
 
-Users can select their preferred payment token during the subscription process, and prices are dynamically displayed in the chosen token format.
+## Payment Flow
+
+1. **Plan Selection**: Users browse and select subscription plans
+2. **Token Selection**: Users choose their preferred payment token (WETH, USDC, DAI, USDT)
+3. **Subscription Creation**: System creates subscription and generates payment link
+4. **Payment Redirect**: Users are automatically redirected to complete payment
+5. **Payment Completion**: Users complete payment on the redirected payment page
+
+**Development Mode**: Shows payment link in alert instead of redirecting
+**Production Mode**: Automatically redirects to payment link
+
+## Subscription Response
+
+When a subscription is created, the API returns:
+
+```json
+{
+  "success": true,
+  "message": "Subscription created successfully",
+  "data": {
+    "subscriptionId": "13",
+    "transactionHash": "0xf499687e9fabfa78159dd687d81f93b2b9f3e9ae2163982f29df9a337c49bc5c",
+    "invoiceNumber": "INV-13-1761583078332",
+    "invoiceDueAt": "2025-10-28T04:37:55.720Z",
+    "paymentLink": "https://your-domain.com/payment?subscriptionId=13"
+  }
+}
+```
+
+Users are then redirected to the `paymentLink` to complete their payment.
 
 ## Development Features
 
@@ -68,6 +100,27 @@ Users can select their preferred payment token during the subscription process, 
 - **Error Handling**: Graceful error handling with user-friendly messages
 - **Loading States**: Beautiful loading animations and states
 - **Responsive Design**: Mobile-first design approach
+
+## Port Configuration
+
+The application runs on port 5000 by default. To change the port:
+
+1. **Using package.json scripts**: Update the `-p` flag in the `dev` and `start` scripts
+2. **Using environment variables**: Set the `PORT` environment variable
+3. **Using command line**: Run `npm run dev -- -p <port>`
+4. **Using convenience scripts**: Use `npm run dev:3000`, `npm run dev:5000`, or `npm run dev:8000`
+
+Example:
+```bash
+# Change to port 3000
+PORT=3000 npm run dev
+
+# Or use convenience scripts
+npm run dev:3000
+
+# Or modify package.json scripts directly
+"dev": "next dev -p 3000"
+```
 
 ## Building for Production
 
