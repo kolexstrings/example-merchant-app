@@ -5,6 +5,7 @@ import {
   formatTokenAmount,
   TokenInfo,
 } from "@/lib/types";
+import { calculateTokenAmount } from '@/lib/api';
 
 interface PlanDetailProps {
   plan: SubscriptionPlan;
@@ -20,6 +21,8 @@ export default function PlanDetail({
   onSubscribe,
 }: PlanDetailProps) {
   const [selectedToken, setSelectedToken] = useState<string>("");
+  const [tokenPrices, setTokenPrices] = useState<Record<string, string>>({});
+  const [loadingToken, setLoadingToken] = useState<Record<string, boolean>>({});
 
   // Set initial selected token
   useEffect(() => {
@@ -27,6 +30,29 @@ export default function PlanDetail({
       setSelectedToken(allowedTokens[0]);
     }
   }, [allowedTokens, selectedToken]);
+
+  useEffect(() => {
+    // Fetch all tokens' prices on mount/plan/allowedTokens change
+    const fetchAll = async () => {
+      const prices: Record<string, string> = {};
+      const loading: Record<string, boolean> = {};
+      for (const tokenAddress of allowedTokens) {
+        loading[tokenAddress] = true;
+        try {
+          const result = await calculateTokenAmount(tokenAddress, parseInt(plan.priceInCents));
+          const token = getTokenInfo(tokenAddress);
+          prices[tokenAddress] = result?.amount ? `${result.amount} ${token ? token.symbol : ''}` : 'Unavailable';
+        } catch {
+          prices[tokenAddress] = 'Error';
+        }
+        loading[tokenAddress] = false;
+      }
+      setTokenPrices(prices);
+      setLoadingToken(loading);
+    };
+    fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.id, plan.priceInCents, JSON.stringify(allowedTokens)]);
 
   const handleSubscribeClick = () => {
     if (!selectedToken) {
@@ -77,13 +103,12 @@ export default function PlanDetail({
           {plan.description}
         </p>
 
+        {/* Price heading area */}
         <div className="mb-6">
           <div className="flex items-baseline justify-center flex-col">
             <div className="flex items-baseline">
-              <span
-                className="text-5xl font-bold text-gray-900 dark:text-white"
-              >
-                {formatTokenAmount(plan.price.toString(), selectedToken)}
+              <span className="text-5xl font-bold text-gray-900 dark:text-white">
+                {loadingToken[selectedToken] ? 'Loading...' : tokenPrices[selectedToken] || '-'}
               </span>
               <span className="text-xl text-gray-500 dark:text-gray-400 ml-2">
                 /
@@ -94,7 +119,6 @@ export default function PlanDetail({
                   : plan.billingInterval}
               </span>
             </div>
-
             <p className="text-gray-500 dark:text-gray-400 mt-1">
               Billed {plan.billingInterval} • {plan.currency}
             </p>
@@ -157,7 +181,7 @@ export default function PlanDetail({
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {formatTokenAmount(plan.price.toString(), tokenAddress)}
+                        {loadingToken[tokenAddress] ? 'Loading...' : tokenPrices[tokenAddress] || '-'}
                       </p>
                     </div>
                   </div>

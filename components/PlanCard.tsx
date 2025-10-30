@@ -1,4 +1,7 @@
 import { SubscriptionPlan } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { calculateTokenAmount } from '@/lib/api';
+import { getTokenInfo } from '@/lib/types';
 
 interface PlanCardProps {
   plan: SubscriptionPlan;
@@ -6,6 +9,33 @@ interface PlanCardProps {
 }
 
 export default function PlanCard({ plan, onClick }: PlanCardProps) {
+  const [tokenPrices, setTokenPrices] = useState<Record<string, string>>({});
+  const [loadingTokens, setLoadingTokens] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      const prices: Record<string, string> = {};
+      const loading: Record<string, boolean> = {};
+      for (const tokenAddress of plan.allowedTokens) {
+        loading[tokenAddress] = true;
+        try {
+          const result = await calculateTokenAmount(tokenAddress, parseInt(plan.priceInCents));
+          // If you want to format, you could use result.amount or whatever the API returns
+          // Save as e.g. '0.0032 ETH'
+          const token = getTokenInfo(tokenAddress);
+          prices[tokenAddress] = result?.amount ? `${result.amount} ${token ? token.symbol : ''}` : 'Unavailable';
+        } catch {
+          prices[tokenAddress] = 'Error';
+        }
+        loading[tokenAddress] = false;
+      }
+      setTokenPrices(prices);
+      setLoadingTokens(loading);
+    };
+    fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.id, plan.priceInCents, JSON.stringify(plan.allowedTokens)]);
+
   const formatPrice = (price: number, currency: string, interval: string) => {
     return `$${price}/${interval === 'monthly' ? 'mo' : interval === 'yearly' ? 'yr' : interval}`;
   };
@@ -32,13 +62,25 @@ export default function PlanCard({ plan, onClick }: PlanCardProps) {
           {plan.name}
         </h3>
 
+        {/* Display all token prices here */}
         <div className="mb-4">
-          <span className="text-3xl font-bold text-gray-900 dark:text-white">
-            ${plan.price}
-          </span>
-          <span className="text-gray-500 dark:text-gray-400">
-            /{plan.billingInterval === 'monthly' ? 'mo' : plan.billingInterval === 'yearly' ? 'yr' : plan.billingInterval}
-          </span>
+          {plan.allowedTokens?.length > 0 ? (
+            <div className="space-y-1 flex flex-col items-center">
+              {plan.allowedTokens.map(tokenAddress => {
+                const token = getTokenInfo(tokenAddress);
+                return (
+                  <div key={tokenAddress} className="flex items-center gap-2">
+                    <span className="text-base text-gray-800 dark:text-gray-200">{token ? token.symbol : tokenAddress.slice(0,6)}</span>
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {loadingTokens[tokenAddress] ? 'Loading...' : tokenPrices[tokenAddress] || '-'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <span>--</span>
+          )}
         </div>
 
         <p className="text-gray-600 dark:text-gray-300 mb-4 text-sm">

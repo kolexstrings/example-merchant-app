@@ -99,6 +99,18 @@ export async function createSubscription(
   }
 }
 
+// Calculate amount for a token by price in cents
+export async function calculateTokenAmount(token: string, priceInCents: number) {
+  const response = await apiRequest<any>(
+    '/api/charges/calculate-token-amount',
+    {
+      method: 'POST',
+      body: JSON.stringify({ token, priceInCents }),
+    }
+  );
+  return response.data; // shape depends on backend, expected: { amount, token, ... }
+}
+
 // Utility function to convert API Plan to internal SubscriptionPlan format
 export function planToSubscriptionPlan(plan: Plan): SubscriptionPlan {
   // Convert price from cents to dollars
