@@ -8,6 +8,7 @@ export default function Login({ onSuccess }: LoginProps) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    walletAddress: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -22,11 +23,13 @@ export default function Login({ onSuccess }: LoginProps) {
     setIsLoading(true);
     setMessage(null);
 
-    // Simulate login - just store credentials
+    // Simulate login - just store credentials and wallet
     const hashedPassword = hashPassword(formData.password);
+    const walletAddress = formData.walletAddress.trim();
     sessionStorage.setItem('user', JSON.stringify({
       email: formData.email,
       password: hashedPassword,
+      walletAddress,
     }));
 
     setMessage({ type: 'success', text: 'Login successful!' });
@@ -98,6 +101,26 @@ export default function Login({ onSuccess }: LoginProps) {
                 For demo purposes, any email that exists in the system can login with any password
               </p>
             </div>
+
+            <div>
+              <label htmlFor="walletAddress" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Subscriber Wallet Address
+              </label>
+              <input
+                id="walletAddress"
+                name="walletAddress"
+                type="text"
+                required
+                value={formData.walletAddress}
+                onChange={handleChange}
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
+                placeholder="0x..."
+                disabled={isLoading}
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                This wallet will be used to manage your subscriptions.
+              </p>
+            </div>
           </div>
 
           {message && (
@@ -119,7 +142,12 @@ export default function Login({ onSuccess }: LoginProps) {
           <div>
             <button
               type="submit"
-              disabled={isLoading || !formData.email.trim() || !formData.password.trim()}
+              disabled={
+                isLoading ||
+                !formData.email.trim() ||
+                !formData.password.trim() ||
+                !formData.walletAddress.trim()
+              }
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
             >
               {isLoading ? 'Signing In...' : 'Sign In'}

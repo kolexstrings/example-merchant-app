@@ -5,13 +5,19 @@ import {
   formatTokenAmount,
   TokenInfo,
 } from "@/lib/types";
-import { calculateTokenAmount } from '@/lib/api';
+import { calculateTokenAmount } from "@/lib/api";
 
 interface PlanDetailProps {
   plan: SubscriptionPlan;
   allowedTokens: string[];
   onBack: () => void;
-  onSubscribe: (userEmail: string, selectedToken: string, promoCode?: string) => void;
+  onSubscribe: (params: {
+    userEmail: string;
+    selectedToken: string;
+    subscriberWallet: string;
+    promoCode?: string;
+  }) => void;
+  isSubscribing: boolean;
 }
 
 export default function PlanDetail({
@@ -19,13 +25,16 @@ export default function PlanDetail({
   allowedTokens,
   onBack,
   onSubscribe,
+  isSubscribing,
 }: PlanDetailProps) {
   const [selectedToken, setSelectedToken] = useState<string>("");
   const [tokenPrices, setTokenPrices] = useState<Record<string, string>>({});
   const [loadingToken, setLoadingToken] = useState<Record<string, boolean>>({});
 
   // Filter to only known tokens
-  const knownTokens = allowedTokens.filter(tokenAddress => getTokenInfo(tokenAddress) !== null);
+  const knownTokens = allowedTokens.filter(
+    (tokenAddress) => getTokenInfo(tokenAddress) !== null
+  );
 
   // Set initial selected token
   useEffect(() => {
@@ -42,16 +51,20 @@ export default function PlanDetail({
       for (const tokenAddress of allowedTokens) {
         loading[tokenAddress] = true;
         try {
-          const result = await calculateTokenAmount(tokenAddress, parseInt(plan.priceInCents));
+          const result = await calculateTokenAmount(
+            tokenAddress,
+            parseInt(plan.priceInCents)
+          );
           const token = getTokenInfo(tokenAddress);
           if (result?.tokenAmount && token) {
-            const amount = parseFloat(result.tokenAmount) / Math.pow(10, token.decimals);
+            const amount =
+              parseFloat(result.tokenAmount) / Math.pow(10, token.decimals);
             prices[tokenAddress] = amount.toFixed(6);
           } else {
-            prices[tokenAddress] = 'Unavailable';
+            prices[tokenAddress] = "Unavailable";
           }
         } catch {
-          prices[tokenAddress] = 'Error';
+          prices[tokenAddress] = "Error";
         }
         loading[tokenAddress] = false;
       }
@@ -72,13 +85,29 @@ export default function PlanDetail({
     }
 
     // Get user email from sessionStorage
-    const userStr = sessionStorage.getItem('user');
+    const userStr = sessionStorage.getItem("user");
     const user = userStr ? JSON.parse(userStr) : null;
-    const userEmail = user?.email || 'demo@example.com';
+    const userEmail = user?.email || "demo@example.com";
+    const subscriberWallet = (user?.walletAddress || "").trim();
+
+    if (!subscriberWallet) {
+      alert("Please log in with a wallet address before subscribing.");
+      return;
+    }
 
     console.log("userEmail:", userEmail);
-    console.log("Calling onSubscribe with:", userEmail, selectedToken, undefined);
-    onSubscribe(userEmail, selectedToken, undefined);
+    console.log("Calling onSubscribe with:", {
+      userEmail,
+      selectedToken,
+      subscriberWallet,
+      promoCode: undefined,
+    });
+    onSubscribe({
+      userEmail,
+      selectedToken,
+      subscriberWallet,
+      promoCode: undefined,
+    });
   };
 
   return (
@@ -137,15 +166,24 @@ export default function PlanDetail({
               <div className="mt-4 text-sm text-gray-600 dark:text-gray-400 space-y-1">
                 <div className="flex justify-between">
                   <span>Price before VAT:</span>
-                  <span>${(plan.pricingBreakdown.priceBeforeVatInCents / 100).toFixed(2)}</span>
+                  <span>
+                    $
+                    {(
+                      plan.pricingBreakdown.priceBeforeVatInCents / 100
+                    ).toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>VAT ({plan.pricingBreakdown.vatPercentage}%):</span>
-                  <span>${(plan.pricingBreakdown.vatAmountInCents / 100).toFixed(2)}</span>
+                  <span>
+                    ${(plan.pricingBreakdown.vatAmountInCents / 100).toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between font-medium text-gray-900 dark:text-white">
                   <span>Total:</span>
-                  <span>${(parseFloat(plan.priceInCents) / 100).toFixed(2)}</span>
+                  <span>
+                    ${(parseFloat(plan.priceInCents) / 100).toFixed(2)}
+                  </span>
                 </div>
               </div>
             )}
@@ -181,13 +219,16 @@ export default function PlanDetail({
 
       <div className="mb-8">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          Payment Method
+          Payment Token
         </h2>
         <div className="space-y-3">
           {knownTokens.map((tokenAddress) => {
             const token = getTokenInfo(tokenAddress)!; // Safe to assert since filtered
             return (
-              <label key={tokenAddress} className="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <label
+                key={tokenAddress}
+                className="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
                 <input
                   type="radio"
                   name="paymentToken"
@@ -207,13 +248,14 @@ export default function PlanDetail({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {loadingToken[tokenAddress] ? (
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {loadingToken[tokenAddress] ||
+                        !tokenPrices[tokenAddress] ? (
                           <div className="inline-block w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
                         ) : (
-                          tokenPrices[tokenAddress] || '-'
+                          tokenPrices[tokenAddress]
                         )}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -226,11 +268,13 @@ export default function PlanDetail({
       <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
         <button
           onClick={handleSubscribeClick}
-          disabled={!selectedToken}
+          disabled={!selectedToken || isSubscribing}
           className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 text-lg"
         >
-          Subscribe & Pay
-          {selectedToken && ` with ${getTokenInfo(selectedToken)?.symbol || 'Selected Token'}`}
+          {isSubscribing
+            ? "Redirecting to payment page to complete payment..."
+            : `Subscribe & Pay${selectedToken ? ` with ${getTokenInfo(selectedToken)?.symbol || "Selected Token"}` : ""}`
+          }
         </button>
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">

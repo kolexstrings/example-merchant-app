@@ -1,4 +1,11 @@
 // API Response Types
+export interface PlanPricingBreakdown {
+  priceBeforeVatInCents: number;
+  vatPercentage: string;
+  vatAmountInCents: number;
+  currency: string;
+}
+
 export interface Plan {
   id: string;
   merchant: string;
@@ -10,12 +17,7 @@ export interface Plan {
   billingIntervalSeconds: string;
   allowedTokens: string[];
   active: boolean;
-  pricingBreakdown: {
-    priceBeforeVatInCents: number;
-    vatPercentage: string;
-    vatAmountInCents: number;
-    currency: string;
-  };
+  pricingBreakdown: PlanPricingBreakdown;
 }
 
 export interface ApiResponse<T> {
@@ -32,18 +34,32 @@ export interface SubscriptionRequest {
   planId: number;
   payerToken: string;
   subscriberEmail: string;
+  subscriberWallet?: string;
 }
 
 export interface SubscriptionResponse {
-  success: boolean;
-  message: string;
-  data: {
-    subscriptionId: string;
-    transactionHash: string;
-    invoiceNumber: string;
-    invoiceDueAt: string;
-    paymentLink: string;
-  };
+  subscriptionId: string;
+  transactionHash: string;
+  invoiceNumber: string;
+  invoiceDueAt: string;
+  paymentLink: string;
+}
+
+export interface PaymentDetailsResponse {
+  subscriptionId: string;
+  subscriberAddress: string | null;
+  planId: string;
+  planName: string;
+  planCurrency: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  amountCents: number;
+  tokenAmountRaw: string | null;
+  tokenAddress: string | null;
+  dueAt: string;
+  invoiceStatus: string;
+  allowedTokens: string[];
+  pricingBreakdown?: PlanPricingBreakdown;
 }
 
 // Token mapping system
@@ -55,7 +71,7 @@ export interface TokenInfo {
 }
 
 export const TOKEN_MAPPING: Record<string, TokenInfo> = {
-  "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582": {
+  "0x41e94eb019c0762f9bfcf9fb1e58725bfb0e7582": {
     address: "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
     name: "USD Coin",
     symbol: "USDC",
@@ -70,7 +86,8 @@ export const TOKEN_MAPPING: Record<string, TokenInfo> = {
 };
 
 export const getTokenInfo = (address: string): TokenInfo | null => {
-  return TOKEN_MAPPING[address] || null;
+  if (!address) return null;
+  return TOKEN_MAPPING[address.toLowerCase()] || null;
 };
 
 export const formatTokenAmount = (

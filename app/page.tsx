@@ -17,6 +17,7 @@ function SubscriptionApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   // Get user from sessionStorage
   const getUser = () => {
@@ -41,6 +42,10 @@ function SubscriptionApp() {
       setIsLoading(false);
     }
   }, [isLoggedIn]);
+
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+  };
 
   const handleLogout = () => {
     sessionStorage.removeItem('user');
@@ -75,44 +80,53 @@ function SubscriptionApp() {
     setSelectedPlan(null);
   };
 
-  const handleSubscribe = async (
-    userEmail: string,
-    selectedToken: string,
-    promoCode?: string
-  ) => {
-    console.log("handleSubscribe called with:", { userEmail, selectedToken, promoCode });
+  const handleSubscribe = async ({
+    userEmail,
+    selectedToken,
+    subscriberWallet,
+    promoCode,
+  }: {
+    userEmail: string;
+    selectedToken: string;
+    subscriberWallet: string;
+    promoCode?: string;
+  }) => {
+    console.log("handleSubscribe called with:", {
+      userEmail,
+      selectedToken,
+      subscriberWallet,
+      promoCode,
+    });
     if (!selectedPlan) {
       console.log("No selectedPlan, returning");
       return;
     }
 
+    setIsSubscribing(true);
+
     try {
       const subscriptionData = {
         planId: parseInt(selectedPlan.id),
         payerToken: selectedToken,
-        subscriberEmail: userEmail
+        subscriberEmail: userEmail,
+        subscriberWallet,
       };
       console.log("subscriptionData:", subscriptionData);
 
-      const result: SubscriptionResponse = await createSubscription(subscriptionData);
+      const result = await createSubscription(subscriptionData);
       console.log('Subscription created:', result);
 
-      // Redirect to payment link instead of showing alert
-      if (result.success && result.data.paymentLink) {
-        console.log('Redirecting to payment link:', result.data.paymentLink);
-
-        // In development, show alert with payment link instead of redirecting
-        if (process.env.NODE_ENV === 'development') {
-          alert(`✅ Subscription created successfully!\n\nPlan: ${selectedPlan.name}\nEmail: ${userEmail}\nToken: ${selectedToken}\nPayment Link: ${result.data.paymentLink}\n\nIn production, you would be redirected to this payment link.`);
-        } else {
-          window.location.href = result.data.paymentLink;
-        }
+      if (result && result.paymentLink) {
+        console.log('Redirecting to payment link:', result.paymentLink);
+        window.location.href = result.paymentLink;
       } else {
         alert('❌ Failed to create subscription. Please try again.');
+        setIsSubscribing(false);
       }
     } catch (error) {
       console.error('Failed to create subscription:', error);
       alert('❌ Failed to create subscription. Please try again.');
+      setIsSubscribing(false);
     }
   };
 
@@ -133,6 +147,7 @@ function SubscriptionApp() {
             allowedTokens={selectedPlan.allowedTokens}
             onBack={handleBack}
             onSubscribe={handleSubscribe}
+            isSubscribing={isSubscribing}
           />
         </div>
       </div>

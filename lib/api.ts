@@ -24,11 +24,19 @@ async function apiRequest<T>(
   }
   const url = `${API_BASE_URL}${endpoint}`;
 
+  console.log("API Base URL:", API_BASE_URL);
+  console.log("Full URL:", url);
+
   console.log("Debug - Auth Token:", {
     tokenPresent: !!process.env.NEXT_PUBLIC_MERCHANT_API_KEY,
     tokenPrefix:
       process.env.NEXT_PUBLIC_MERCHANT_API_KEY?.substring(0, 5) + "...",
   });
+
+  console.log(
+    "API Key from .env:",
+    process.env.NEXT_PUBLIC_MERCHANT_API_KEY ? "Loaded" : "Not found"
+  );
 
   const response = await fetch(url, {
     headers: {
@@ -90,25 +98,13 @@ export async function getPlanById(planId: string): Promise<Plan> {
 
 // Create a subscription
 export async function createSubscription(
-  subscriptionData: SubscriptionRequest
+  data: SubscriptionRequest
 ): Promise<SubscriptionResponse> {
-  try {
-    const response = await apiRequest<SubscriptionResponse["data"]>(
-      "/api/subscriptions",
-      {
-        method: "POST",
-        body: JSON.stringify(subscriptionData),
-      }
-    );
-    return {
-      success: true,
-      message: "Subscription created successfully",
-      data: response.data,
-    };
-  } catch (error) {
-    console.error("Failed to create subscription:", error);
-    throw error;
-  }
+  const response = await apiRequest<SubscriptionResponse>("/api/subscriptions", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return response.data;
 }
 
 // Calculate amount for a token by price in cents
