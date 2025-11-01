@@ -4,13 +4,7 @@ import { useState, useEffect } from 'react';
 import PlanCard from '@/components/PlanCard';
 import PlanDetail from '@/components/PlanDetail';
 import { Plan, SubscriptionPlan, SubscriptionResponse } from '@/lib/types';
-import {
-  getMerchantPlans,
-  mockGetMerchantPlans,
-  planToSubscriptionPlan,
-  createSubscription,
-  mockCreateSubscription
-} from '@/lib/api';
+import { getMerchantPlans, planToSubscriptionPlan, createSubscription } from '@/lib/api';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 // Dynamic default for Next.js SSR/CSR
@@ -31,14 +25,7 @@ function SubscriptionApp() {
       setIsLoading(true);
       setError(null);
 
-      // Try real API first, fall back to mock if it fails
-      let merchantPlans: Plan[];
-      try {
-        merchantPlans = await getMerchantPlans(MERCHANT_ADDRESS);
-      } catch (error) {
-        console.log('Using mock API data');
-        merchantPlans = await mockGetMerchantPlans(MERCHANT_ADDRESS);
-      }
+      const merchantPlans = await getMerchantPlans(MERCHANT_ADDRESS);
 
       // Filter only active plans
       const activePlans = merchantPlans.filter(plan => plan.active);
@@ -73,14 +60,7 @@ function SubscriptionApp() {
         subscriberEmail: userEmail
       };
 
-      // Try real API first, fall back to mock if it fails
-      let result: SubscriptionResponse;
-      try {
-        result = await createSubscription(subscriptionData);
-      } catch (error) {
-        console.log('Using mock subscription');
-        result = await mockCreateSubscription(subscriptionData);
-      }
+      const result: SubscriptionResponse = await createSubscription(subscriptionData);
 
       console.log('Subscription created:', result);
 

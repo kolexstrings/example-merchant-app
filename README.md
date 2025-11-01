@@ -7,7 +7,6 @@ A modern subscription management application built with Next.js 16 and React 19,
 - 🚀 **Real API Integration**: Connects to BillingBase API endpoints for plans and subscriptions
 - 💰 **Multi-Token Support**: Support for WETH, USDC, DAI, and USDT payments
 - 🎨 **Modern UI**: Clean, responsive design with dark mode support
-- 🔄 **Fallback System**: Automatic fallback to mock data when API is unavailable
 - 📱 **Mobile Responsive**: Works seamlessly across all devices
 - 🎯 **Type Safe**: Full TypeScript support with comprehensive type definitions
 
@@ -49,7 +48,7 @@ Open [http://localhost:5000](http://localhost:5000) to view the application.
 
 ## Project Structure
 
-- `lib/api.ts` - API utility functions and mock data
+- `lib/api.ts` - API utility functions
 - `lib/types.ts` - TypeScript type definitions and token mapping
 - `components/` - React components (PlanCard, PlanDetail, etc.)
 - `app/` - Next.js app directory with pages and layouts
@@ -96,7 +95,6 @@ Users are then redirected to the `paymentLink` to complete their payment.
 
 ## Development Features
 
-- **Mock API Fallback**: Includes comprehensive mock data for development and testing
 - **Error Handling**: Graceful error handling with user-friendly messages
 - **Loading States**: Beautiful loading animations and states
 - **Responsive Design**: Mobile-first design approach

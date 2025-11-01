@@ -24,12 +24,15 @@ export default function PlanDetail({
   const [tokenPrices, setTokenPrices] = useState<Record<string, string>>({});
   const [loadingToken, setLoadingToken] = useState<Record<string, boolean>>({});
 
+  // Filter to only known tokens
+  const knownTokens = allowedTokens.filter(tokenAddress => getTokenInfo(tokenAddress) !== null);
+
   // Set initial selected token
   useEffect(() => {
-    if (allowedTokens.length > 0 && !selectedToken) {
-      setSelectedToken(allowedTokens[0]);
+    if (knownTokens.length > 0 && !selectedToken) {
+      setSelectedToken(knownTokens[0]);
     }
-  }, [allowedTokens, selectedToken]);
+  }, [knownTokens, selectedToken]);
 
   useEffect(() => {
     // Fetch all tokens' prices on mount/plan/allowedTokens change
@@ -41,7 +44,12 @@ export default function PlanDetail({
         try {
           const result = await calculateTokenAmount(tokenAddress, parseInt(plan.priceInCents));
           const token = getTokenInfo(tokenAddress);
-          prices[tokenAddress] = result?.amount ? `${result.amount} ${token ? token.symbol : ''}` : 'Unavailable';
+          if (result?.tokenAmount && token) {
+            const amount = parseFloat(result.tokenAmount) / Math.pow(10, token.decimals);
+            prices[tokenAddress] = amount.toFixed(6);
+          } else {
+            prices[tokenAddress] = 'Unavailable';
+          }
         } catch {
           prices[tokenAddress] = 'Error';
         }
@@ -108,20 +116,31 @@ export default function PlanDetail({
           <div className="flex items-baseline justify-center flex-col">
             <div className="flex items-baseline">
               <span className="text-5xl font-bold text-gray-900 dark:text-white">
-                {loadingToken[selectedToken] ? 'Loading...' : tokenPrices[selectedToken] || '-'}
+                ${(parseFloat(plan.priceInCents) / 100).toFixed(2)}
               </span>
               <span className="text-xl text-gray-500 dark:text-gray-400 ml-2">
-                /
-                {plan.billingInterval === "monthly"
-                  ? "mo"
-                  : plan.billingInterval === "yearly"
-                  ? "yr"
-                  : plan.billingInterval}
+                / mo
               </span>
             </div>
             <p className="text-gray-500 dark:text-gray-400 mt-1">
-              Billed {plan.billingInterval} • {plan.currency}
+              Billed monthly • {plan.currency}
             </p>
+            {plan.pricingBreakdown && (
+              <div className="mt-4 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <div className="flex justify-between">
+                  <span>Price before VAT:</span>
+                  <span>${(plan.pricingBreakdown.priceBeforeVatInCents / 100).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>VAT ({plan.pricingBreakdown.vatPercentage}%):</span>
+                  <span>${(plan.pricingBreakdown.vatAmountInCents / 100).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-medium text-gray-900 dark:text-white">
+                  <span>Total:</span>
+                  <span>${(parseFloat(plan.priceInCents) / 100).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -157,8 +176,8 @@ export default function PlanDetail({
           Payment Method
         </h2>
         <div className="space-y-3">
-          {allowedTokens.map((tokenAddress) => {
-            const token = getTokenInfo(tokenAddress);
+          {knownTokens.map((tokenAddress) => {
+            const token = getTokenInfo(tokenAddress)!; // Safe to assert since filtered
             return (
               <label key={tokenAddress} className="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <input
@@ -173,10 +192,10 @@ export default function PlanDetail({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {token ? token.name : 'Unknown Token'}
+                        {token.name}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {token ? token.symbol : tokenAddress.slice(0, 10) + '...'}
+                        {token.symbol}
                       </p>
                     </div>
                     <div className="text-right">
