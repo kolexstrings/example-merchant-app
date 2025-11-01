@@ -63,14 +63,22 @@ export default function PlanDetail({
   }, [plan.id, plan.priceInCents, JSON.stringify(allowedTokens)]);
 
   const handleSubscribeClick = () => {
+    console.log("Subscribe button clicked");
+    console.log("selectedToken:", selectedToken);
     if (!selectedToken) {
+      console.log("No token selected, alerting user");
       alert("Please select a payment token");
       return;
     }
 
-    // For now, use a demo email since we removed auth
-    const demoEmail = 'demo@example.com';
-    onSubscribe(demoEmail, selectedToken, undefined);
+    // Get user email from sessionStorage
+    const userStr = sessionStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const userEmail = user?.email || 'demo@example.com';
+
+    console.log("userEmail:", userEmail);
+    console.log("Calling onSubscribe with:", userEmail, selectedToken, undefined);
+    onSubscribe(userEmail, selectedToken, undefined);
   };
 
   return (
@@ -200,7 +208,11 @@ export default function PlanDetail({
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {loadingToken[tokenAddress] ? 'Loading...' : tokenPrices[tokenAddress] || '-'}
+                        {loadingToken[tokenAddress] ? (
+                          <div className="inline-block w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                        ) : (
+                          tokenPrices[tokenAddress] || '-'
+                        )}
                       </p>
                     </div>
                   </div>
@@ -215,7 +227,7 @@ export default function PlanDetail({
         <button
           onClick={handleSubscribeClick}
           disabled={!selectedToken}
-          className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 text-lg"
+          className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 text-lg"
         >
           Subscribe & Pay
           {selectedToken && ` with ${getTokenInfo(selectedToken)?.symbol || 'Selected Token'}`}

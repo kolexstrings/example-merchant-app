@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import PlanCard from '@/components/PlanCard';
 import PlanDetail from '@/components/PlanDetail';
+import Login from '@/components/Login';
 import { Plan, SubscriptionPlan, SubscriptionResponse } from '@/lib/types';
 import { getMerchantPlans, planToSubscriptionPlan, createSubscription } from '@/lib/api';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -15,10 +16,38 @@ function SubscriptionApp() {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Get user from sessionStorage
+  const getUser = () => {
+    try {
+      const userStr = sessionStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const user = getUser();
 
   useEffect(() => {
-    loadMerchantPlans();
-  }, []);
+    setIsLoggedIn(!!user);
+  }, [user]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadMerchantPlans();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isLoggedIn]);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('user');
+    setIsLoggedIn(false);
+    setSelectedPlan(null);
+    setPlans([]);
+  };
 
   const loadMerchantPlans = async () => {
     try {
@@ -51,7 +80,11 @@ function SubscriptionApp() {
     selectedToken: string,
     promoCode?: string
   ) => {
-    if (!selectedPlan) return;
+    console.log("handleSubscribe called with:", { userEmail, selectedToken, promoCode });
+    if (!selectedPlan) {
+      console.log("No selectedPlan, returning");
+      return;
+    }
 
     try {
       const subscriptionData = {
@@ -59,9 +92,9 @@ function SubscriptionApp() {
         payerToken: selectedToken,
         subscriberEmail: userEmail
       };
+      console.log("subscriptionData:", subscriptionData);
 
       const result: SubscriptionResponse = await createSubscription(subscriptionData);
-
       console.log('Subscription created:', result);
 
       // Redirect to payment link instead of showing alert
@@ -82,6 +115,14 @@ function SubscriptionApp() {
       alert('❌ Failed to create subscription. Please try again.');
     }
   };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Login onSuccess={handleLoginSuccess} />
+      </div>
+    );
+  }
 
   if (selectedPlan) {
     return (
@@ -137,13 +178,21 @@ function SubscriptionApp() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Choose Your Plan
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
-            Select the perfect plan for your needs
-          </p>
+        <div className="flex justify-between items-center mb-12">
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Choose Your Plan
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300">
+              Select the perfect plan for your needs
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm"
+          >
+            Logout
+          </button>
         </div>
 
         {plans.length === 0 ? (

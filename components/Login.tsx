@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginProps {
   onSuccess: () => void;
-  onSwitchToRegister: () => void;
 }
 
-export default function Login({ onSuccess, onSwitchToRegister }: LoginProps) {
+export default function Login({ onSuccess }: LoginProps) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -14,25 +12,29 @@ export default function Login({ onSuccess, onSwitchToRegister }: LoginProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const { login } = useAuth();
+  // Simple hash function for demo purposes
+  const hashPassword = (password: string): string => {
+    return btoa(password); // Base64 encode for simulation
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage(null);
 
-    const result = await login(formData.email, formData.password);
+    // Simulate login - just store credentials
+    const hashedPassword = hashPassword(formData.password);
+    sessionStorage.setItem('user', JSON.stringify({
+      email: formData.email,
+      password: hashedPassword,
+    }));
+
+    setMessage({ type: 'success', text: 'Login successful!' });
+    setTimeout(() => {
+      onSuccess();
+    }, 1000);
 
     setIsLoading(false);
-
-    if (result.success) {
-      setMessage({ type: 'success', text: result.message });
-      setTimeout(() => {
-        onSuccess();
-      }, 1500);
-    } else {
-      setMessage({ type: 'error', text: result.message });
-    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,14 +127,9 @@ export default function Login({ onSuccess, onSwitchToRegister }: LoginProps) {
           </div>
 
           <div className="text-center">
-            <button
-              type="button"
-              onClick={onSwitchToRegister}
-              className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
-              disabled={isLoading}
-            >
-              Don't have an account? Sign up
-            </button>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              For demo purposes, any email/password combination will work
+            </p>
           </div>
         </form>
       </div>

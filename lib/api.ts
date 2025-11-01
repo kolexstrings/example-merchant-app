@@ -45,7 +45,7 @@ async function apiRequest<T>(
       statusText: response.statusText,
       url: url,
       headers: Object.fromEntries(response.headers.entries()),
-      apiKey: process.env.MERCHANT_API_KEY ? "Set" : "Not Set",
+      apiKey: process.env.NEXT_PUBLIC_MERCHANT_API_KEY ? "Set" : "Not Set",
     });
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
