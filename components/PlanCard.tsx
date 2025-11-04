@@ -44,7 +44,7 @@ export default function PlanCard({ plan, onClick }: PlanCardProps) {
         <div className="space-y-2 mb-6">
           {plan.features.slice(0, 3).map((feature, index) => (
             <div key={index} className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-              <svg className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-green-500 mr-2 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
               {feature}
@@ -57,7 +57,7 @@ export default function PlanCard({ plan, onClick }: PlanCardProps) {
           )}
         </div>
 
-        <button className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
+        <button className={`w-full py-2 px-4 rounded-lg font-medium transition-colors cursor-pointer ${
           plan.popular
             ? 'bg-blue-500 text-white hover:bg-blue-600'
             : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'

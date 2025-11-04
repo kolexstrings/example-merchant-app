@@ -125,7 +125,7 @@ export default function Register({ onSuccess, onSwitchToLogin }: RegisterProps) 
             <button
               type="button"
               onClick={onSwitchToLogin}
-              className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
+              className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200 cursor-pointer"
               disabled={isLoading}
             >
               Already have an account? Sign in

@@ -115,7 +115,7 @@ export default function PlanDetail({
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={onBack}
-          className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+          className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
         >
           <svg
             className="w-5 h-5 mr-2"
@@ -144,9 +144,6 @@ export default function PlanDetail({
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
           {plan.name}
         </h1>
-        <p className="text-gray-600 dark:text-gray-300 mb-4">
-          {plan.description}
-        </p>
 
         {/* Price heading area */}
         <div className="mb-6">
@@ -273,8 +270,13 @@ export default function PlanDetail({
         >
           {isSubscribing
             ? "Redirecting to payment page to complete payment..."
-            : `Subscribe & Pay${selectedToken ? ` with ${getTokenInfo(selectedToken)?.symbol || "Selected Token"}` : ""}`
-          }
+            : `Subscribe & Pay${
+                selectedToken
+                  ? ` with ${
+                      getTokenInfo(selectedToken)?.symbol || "Selected Token"
+                    }`
+                  : ""
+              }`}
         </button>
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">

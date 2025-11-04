@@ -179,7 +179,7 @@ function SubscriptionApp() {
               <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
               <button
                 onClick={loadMerchantPlans}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg cursor-pointer"
               >
                 Try Again
               </button>
@@ -204,7 +204,7 @@ function SubscriptionApp() {
           </div>
           <button
             onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm"
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer"
           >
             Logout
           </button>
