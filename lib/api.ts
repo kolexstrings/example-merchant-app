@@ -7,44 +7,48 @@ import {
   SubscriptionPlan,
   formatTokenAmount,
   getTokenInfo,
+  MerchantConfig,
 } from "./types";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.billingbase.com";
+const DEFAULT_API_BASE_URL = "https://api.billingbase.com";
+
+let merchantConfigOverride: MerchantConfig | null = null;
+
+export function applyMerchantConfig(config: MerchantConfig) {
+  merchantConfigOverride = {
+    apiKey: config.apiKey.trim(),
+    walletAddress: config.walletAddress.trim(),
+  };
+}
+
+export function clearMerchantConfigOverride() {
+  merchantConfigOverride = null;
+}
 
 // Generic API fetch function
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  if (!process.env.NEXT_PUBLIC_MERCHANT_API_KEY) {
-    console.error(
-      "NEXT_PUBLIC_MERCHANT_API_KEY is not set in environment variables"
-    );
+  const apiBaseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_API_BASE_URL;
+  const apiKey = merchantConfigOverride?.apiKey;
+
+  if (!apiKey) {
+    console.warn("Merchant API key is not configured");
   }
-  const url = `${API_BASE_URL}${endpoint}`;
 
-  console.log("API Base URL:", API_BASE_URL);
-  console.log("Full URL:", url);
+  const url = `${apiBaseUrl}${endpoint}`;
 
-  console.log("Debug - Auth Token:", {
-    tokenPresent: !!process.env.NEXT_PUBLIC_MERCHANT_API_KEY,
-    tokenPrefix:
-      process.env.NEXT_PUBLIC_MERCHANT_API_KEY?.substring(0, 5) + "...",
-  });
-
-  console.log(
-    "API Key from .env:",
-    process.env.NEXT_PUBLIC_MERCHANT_API_KEY ? "Loaded" : "Not found"
-  );
+  const headers = new Headers(options.headers as HeadersInit);
+  headers.set("Content-Type", "application/json");
+  if (apiKey) {
+    headers.set("Authorization", `Bearer ${apiKey}`);
+  }
 
   const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_MERCHANT_API_KEY || ""}`,
-      ...options.headers,
-    },
     ...options,
+    headers,
   });
 
   if (!response.ok) {
@@ -53,7 +57,7 @@ async function apiRequest<T>(
       statusText: response.statusText,
       url: url,
       headers: Object.fromEntries(response.headers.entries()),
-      apiKey: process.env.NEXT_PUBLIC_MERCHANT_API_KEY ? "Set" : "Not Set",
+      apiKey: apiKey ? "Set" : "Not Set",
     });
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
@@ -72,9 +76,11 @@ export async function getMerchantPlans(
 ): Promise<Plan[]> {
   try {
     const address =
-      merchantAddress || process.env.NEXT_PUBLIC_MERCHANT_WALLET_ADDRESS;
+      merchantAddress || merchantConfigOverride?.walletAddress;
     if (!address) {
-      throw new Error("Merchant wallet address is required");
+      throw new Error(
+        "Merchant wallet address is required. Please configure the merchant settings."
+      );
     }
     const response = await apiRequest<Plan[]>(`/api/plans/merchant/${address}`);
     console.log("API Response:", response);

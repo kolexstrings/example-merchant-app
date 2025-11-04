@@ -138,6 +138,11 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+export interface MerchantConfig {
+  apiKey: string;
+  walletAddress: string;
+}
+
 export interface PromoCode {
   code: string;
   discountType: "percentage" | "fixed";
@@ -205,4 +210,5 @@ export const validateName = (name: string): boolean => {
 export const STORAGE_KEYS = {
   USERS: "subscription_app_users",
   CURRENT_USER: "subscription_app_current_user",
+  MERCHANT_CONFIG: "subscription_app_merchant_config",
 } as const;
