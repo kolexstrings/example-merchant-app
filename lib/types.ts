@@ -30,6 +30,34 @@ export interface MerchantPlansResponse {
   data: Plan[];
 }
 
+export interface ApiPlanPricingEntry {
+  amountCents?: number;
+  amountInKobo?: number;
+}
+
+export interface ApiAllowedToken {
+  address: string;
+  currency?: string;
+}
+
+export interface ApiPlan {
+  id: string;
+  merchant: string;
+  name: string;
+  description?: string;
+  features?: string[];
+  pricing?: Record<string, ApiPlanPricingEntry>;
+  billingIntervalSeconds: string;
+  allowedTokens: Array<string | ApiAllowedToken>;
+  active: boolean;
+  pricingBreakdown?: {
+    priceBeforeVatInCents: number;
+    vatPercentage: number;
+    vatAmountInCents: number;
+    currency: string;
+  };
+}
+
 export interface SubscriptionRequest {
   planId: number;
   payerToken: string;
@@ -85,14 +113,22 @@ export const TOKEN_MAPPING: Record<string, TokenInfo> = {
   },
 };
 
-export const getTokenInfo = (address: string): TokenInfo | null => {
+type TokenLike = string | { address?: string | null } | null | undefined;
+
+export const getTokenInfo = (address: TokenLike): TokenInfo | null => {
   if (!address) return null;
-  return TOKEN_MAPPING[address.toLowerCase()] || null;
+
+  const normalized = typeof address === "string" ? address : address.address;
+  if (typeof normalized !== "string" || !normalized) {
+    return null;
+  }
+
+  return TOKEN_MAPPING[normalized.toLowerCase()] || null;
 };
 
 export const formatTokenAmount = (
   amountInCents: string,
-  tokenAddress: string
+  tokenAddress: string,
 ): string => {
   const token = getTokenInfo(tokenAddress);
   if (!token) return `${amountInCents} units`;
@@ -161,10 +197,10 @@ export interface DiscountResult {
 export const validatePromoCode = (
   code: string,
   planPrice: number,
-  promoCodes: PromoCode[]
+  promoCodes: PromoCode[],
 ): DiscountResult => {
   const promoCode = promoCodes.find(
-    (pc) => pc.code.toLowerCase() === code.toLowerCase() && pc.valid
+    (pc) => pc.code.toLowerCase() === code.toLowerCase() && pc.valid,
   );
 
   if (!promoCode) {

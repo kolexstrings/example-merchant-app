@@ -1,5 +1,6 @@
 import {
   Plan,
+  ApiPlan,
   ApiResponse,
   MerchantPlansResponse,
   SubscriptionRequest,
@@ -10,7 +11,9 @@ import {
   MerchantConfig,
 } from "./types";
 
-const DEFAULT_API_BASE_URL = "https://api.billingbase.com";
+const PROD_API_BASE_URL = "https://api.billingbase.com";
+const LOCAL_API_BASE_URL = "http://localhost:8080";
+const LOG_PREFIX = "[MerchantAPI]";
 
 let merchantConfigOverride: MerchantConfig | null = null;
 
@@ -25,13 +28,30 @@ export function clearMerchantConfigOverride() {
   merchantConfigOverride = null;
 }
 
+function resolveApiBaseUrl() {
+  const envBase = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (envBase) {
+    return envBase;
+  }
+
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return LOCAL_API_BASE_URL;
+    }
+  } else if (process.env.NODE_ENV === "development") {
+    return LOCAL_API_BASE_URL;
+  }
+
+  return PROD_API_BASE_URL;
+}
+
 // Generic API fetch function
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<ApiResponse<T>> {
-  const apiBaseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_API_BASE_URL;
+  const apiBaseUrl = resolveApiBaseUrl();
   const apiKey = merchantConfigOverride?.apiKey;
 
   if (!apiKey) {
@@ -46,45 +66,115 @@ async function apiRequest<T>(
     headers.set("Authorization", `Bearer ${apiKey}`);
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  const requestMetadata = {
+    url,
+    baseUrl: apiBaseUrl,
+    endpoint,
+    method: options.method || "GET",
+    hasApiKey: Boolean(apiKey),
+    origin: typeof window !== "undefined" ? window.location.origin : undefined,
+  };
+
+  console.info(`${LOG_PREFIX} Initiating request`, requestMetadata);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Network error before response`, {
+      ...requestMetadata,
+      error,
+      errorName: (error as any)?.name,
+      errorMessage: (error as any)?.message,
+      errorStack: (error as any)?.stack,
+      errorToString: String(error),
+    });
+    throw error;
+  }
 
   if (!response.ok) {
-    console.error("API Request Details:", {
+    console.error(`${LOG_PREFIX} Non-success response`, {
+      ...requestMetadata,
       status: response.status,
       statusText: response.statusText,
-      url: url,
       headers: Object.fromEntries(response.headers.entries()),
-      apiKey: apiKey ? "Set" : "Not Set",
     });
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
       `API request failed: ${response.status} ${
         response.statusText
-      }\n${JSON.stringify(errorData, null, 2)}`
+      }\n${JSON.stringify(errorData, null, 2)}`,
     );
   }
+
+  console.info(`${LOG_PREFIX} Request succeeded`, {
+    ...requestMetadata,
+    status: response.status,
+  });
 
   return response.json();
 }
 
+function normalizeApiPlan(plan: ApiPlan): Plan {
+  const pricingEntries = plan.pricing && Object.entries(plan.pricing);
+  const [primaryCurrency, primaryEntry] = pricingEntries?.[0] || ["USD", {}];
+
+  const amountMinorUnits = (() => {
+    if (!primaryEntry) return 0;
+    if (typeof primaryEntry.amountCents === "number") {
+      return primaryEntry.amountCents;
+    }
+    if (typeof primaryEntry.amountInKobo === "number") {
+      return primaryEntry.amountInKobo;
+    }
+    return 0;
+  })();
+
+  const totalPriceInCents = String(amountMinorUnits);
+  const price = amountMinorUnits / 100;
+
+  const allowedTokens = plan.allowedTokens.map((token) =>
+    typeof token === "string" ? token : token.address,
+  );
+
+  return {
+    id: plan.id,
+    merchant: plan.merchant,
+    name: plan.name || "Untitled Plan",
+    description: plan.description || "",
+    features: plan.features && plan.features.length > 0 ? plan.features : [],
+    totalPriceInCents,
+    currency: primaryCurrency,
+    billingIntervalSeconds: plan.billingIntervalSeconds,
+    allowedTokens,
+    active: plan.active,
+    pricingBreakdown: plan.pricingBreakdown,
+    pricing: plan.pricing,
+    price,
+    priceInCents: totalPriceInCents,
+    billingInterval: "monthly",
+  } as Plan;
+}
+
 // Get all plans for a merchant
 export async function getMerchantPlans(
-  merchantAddress?: string
+  merchantAddress?: string,
 ): Promise<Plan[]> {
   try {
-    const address =
-      merchantAddress || merchantConfigOverride?.walletAddress;
+    const address = merchantAddress || merchantConfigOverride?.walletAddress;
     if (!address) {
       throw new Error(
-        "Merchant wallet address is required. Please configure the merchant settings."
+        "Merchant wallet address is required. Please configure the merchant settings.",
       );
     }
-    const response = await apiRequest<Plan[]>(`/api/plans/merchant/${address}`);
+    const response = await apiRequest<ApiPlan[]>(
+      `/api/plans/merchant/${address}`,
+    );
     console.log("API Response:", response);
-    return response.data;
+    return response.data.map(normalizeApiPlan);
   } catch (error) {
     console.error("Failed to fetch merchant plans:", error);
     throw error;
@@ -104,26 +194,29 @@ export async function getPlanById(planId: string): Promise<Plan> {
 
 // Create a subscription
 export async function createSubscription(
-  data: SubscriptionRequest
+  data: SubscriptionRequest,
 ): Promise<SubscriptionResponse> {
-  const response = await apiRequest<SubscriptionResponse>("/api/subscriptions", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  const response = await apiRequest<SubscriptionResponse>(
+    "/api/subscriptions",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
   return response.data;
 }
 
 // Calculate amount for a token by price in cents
 export async function calculateTokenAmount(
   token: string,
-  priceInCents: number
+  priceInCents: number,
 ) {
   const response = await apiRequest<any>(
     "/api/charges/calculate-token-amount",
     {
       method: "POST",
       body: JSON.stringify({ token, priceInCents }),
-    }
+    },
   );
   console.log("Token amount:", response);
   return response.data; // shape depends on backend, expected: { amount, token, ... }
@@ -131,6 +224,15 @@ export async function calculateTokenAmount(
 
 // Utility function to convert API Plan to internal SubscriptionPlan format
 export function planToSubscriptionPlan(plan: Plan): SubscriptionPlan {
+  const normalizeTokenAddress = (token: any): string => {
+    if (!token) return "";
+    if (typeof token === "string") return token;
+    if (typeof token === "object" && typeof token.address === "string") {
+      return token.address;
+    }
+    return String(token ?? "");
+  };
+
   // Convert price from cents to dollars
   const priceInDollars = parseFloat(plan.totalPriceInCents) / 100;
 
@@ -139,10 +241,13 @@ export function planToSubscriptionPlan(plan: Plan): SubscriptionPlan {
 
   // Prepare token descriptions for potential fallback usage
   const tokenDescriptions = plan.allowedTokens.map((tokenAddress) => {
-    const token = getTokenInfo(tokenAddress);
+    const normalizedAddress = normalizeTokenAddress(tokenAddress);
+    const token = getTokenInfo(normalizedAddress);
     return token
       ? `Pay with ${token.symbol}`
-      : `Pay with ${tokenAddress.slice(0, 10)}...`;
+      : normalizedAddress
+        ? `Pay with ${normalizedAddress.slice(0, 10)}...`
+        : "Pay with supported token";
   });
 
   return {
@@ -158,7 +263,7 @@ export function planToSubscriptionPlan(plan: Plan): SubscriptionPlan {
       plan.description ||
       `Pay ${formatTokenAmount(
         plan.totalPriceInCents,
-        plan.allowedTokens[0] || ""
+        normalizeTokenAddress(plan.allowedTokens[0]) || "",
       )} ${billingInterval}`,
     popular: plan.active, // Use active status as popular flag
     pricingBreakdown: plan.pricingBreakdown,
@@ -167,7 +272,7 @@ export function planToSubscriptionPlan(plan: Plan): SubscriptionPlan {
 
 // Helper function to convert billing interval from seconds to readable format
 function getBillingInterval(
-  seconds: string
+  seconds: string,
 ): "monthly" | "yearly" | "weekly" | "daily" {
   const secondsNum = parseInt(seconds);
 

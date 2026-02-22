@@ -1,14 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import PlanCard from '@/components/PlanCard';
-import PlanDetail from '@/components/PlanDetail';
-import Login from '@/components/Login';
-import MerchantConfigModal from '@/components/MerchantConfigModal';
-import { Plan, SubscriptionPlan, SubscriptionResponse } from '@/lib/types';
-import { getMerchantPlans, planToSubscriptionPlan, createSubscription } from '@/lib/api';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { useMerchantConfig } from '@/contexts/MerchantConfigContext';
+import { useState, useEffect, useCallback } from "react";
+import PlanCard from "@/components/PlanCard";
+import PlanDetail from "@/components/PlanDetail";
+import Login from "@/components/Login";
+import MerchantConfigModal from "@/components/MerchantConfigModal";
+import { Plan, SubscriptionPlan, SubscriptionResponse } from "@/lib/types";
+import {
+  getMerchantPlans,
+  planToSubscriptionPlan,
+  createSubscription,
+} from "@/lib/api";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { useMerchantConfig } from "@/contexts/MerchantConfigContext";
+
+const LOG_PREFIX = "[MerchantApp]";
 
 function SubscriptionApp() {
   const {
@@ -30,7 +36,7 @@ function SubscriptionApp() {
   // Get user from sessionStorage
   const getUser = () => {
     try {
-      const userStr = sessionStorage.getItem('user');
+      const userStr = sessionStorage.getItem("user");
       return userStr ? JSON.parse(userStr) : null;
     } catch {
       return null;
@@ -40,11 +46,26 @@ function SubscriptionApp() {
   const user = getUser();
 
   const loadMerchantPlans = useCallback(async () => {
+    console.groupCollapsed(`${LOG_PREFIX} loadMerchantPlans`);
+    console.info(`${LOG_PREFIX} Current merchant configuration snapshot`, {
+      isConfigured,
+      walletAddressPresent: Boolean(merchantConfig?.walletAddress),
+      walletAddress: merchantConfig?.walletAddress,
+    });
+
     if (!isConfigured || !merchantConfig?.walletAddress) {
+      console.warn(
+        `${LOG_PREFIX} Merchant configuration missing. Skipping plan fetch.`,
+        {
+          isConfigured,
+          walletAddress: merchantConfig?.walletAddress,
+        },
+      );
       setPlans([]);
       setSelectedPlan(null);
       setError(null);
       setIsLoading(false);
+      console.groupEnd();
       return;
     }
 
@@ -52,21 +73,39 @@ function SubscriptionApp() {
       setIsLoading(true);
       setError(null);
 
-      const merchantPlans = await getMerchantPlans(merchantConfig.walletAddress);
+      console.info(`${LOG_PREFIX} Fetching merchant plans`, {
+        walletAddress: merchantConfig.walletAddress,
+        timestamp: new Date().toISOString(),
+      });
 
-      // Filter only active plans
-      const activePlans = merchantPlans.filter(plan => plan.active);
+      const merchantPlans = await getMerchantPlans(
+        merchantConfig.walletAddress,
+      );
+
+      const activePlans = merchantPlans.filter((plan) => plan.active);
+      console.info(`${LOG_PREFIX} Plans fetched`, {
+        totalPlans: merchantPlans.length,
+        activePlans: activePlans.length,
+      });
       setPlans(activePlans);
     } catch (error) {
-      console.error('Failed to load merchant plans:', error);
-      setError('Failed to load subscription plans. Please check your merchant configuration and try again.');
+      console.error(`${LOG_PREFIX} Failed to load merchant plans`, error);
+      setError(
+        "Failed to load subscription plans. Please check your merchant configuration and try again.",
+      );
     } finally {
       setIsLoading(false);
+      console.groupEnd();
     }
   }, [isConfigured, merchantConfig?.walletAddress]);
 
   useEffect(() => {
-    setIsLoggedIn(!!user);
+    const nextLoginState = !!user;
+    console.info(`${LOG_PREFIX} Session user updated`, {
+      userPresent: Boolean(user),
+      nextLoginState,
+    });
+    setIsLoggedIn(nextLoginState);
   }, [user]);
 
   useEffect(() => {
@@ -75,17 +114,26 @@ function SubscriptionApp() {
     }
 
     if (!isConfigured) {
+      console.warn(
+        `${LOG_PREFIX} No merchant config detected after load. Prompting user.`,
+      );
       setShowConfigModal(true);
     }
   }, [isMerchantConfigLoaded, isConfigured]);
 
   useEffect(() => {
     if (!isLoggedIn) {
+      console.warn(
+        `${LOG_PREFIX} User is not logged in. Skipping plan load and stopping spinner.`,
+      );
       setIsLoading(false);
       return;
     }
 
     if (!isMerchantConfigLoaded) {
+      console.info(
+        `${LOG_PREFIX} Merchant config not loaded yet. Waiting before fetching plans.`,
+      );
       return;
     }
 
@@ -93,11 +141,13 @@ function SubscriptionApp() {
   }, [isLoggedIn, isMerchantConfigLoaded, loadMerchantPlans]);
 
   const handleLoginSuccess = () => {
+    console.info(`${LOG_PREFIX} Login successful. Enabling plan view.`);
     setIsLoggedIn(true);
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('user');
+    console.info(`${LOG_PREFIX} Logging out and clearing session data.`);
+    sessionStorage.removeItem("user");
     setIsLoggedIn(false);
     setSelectedPlan(null);
     setPlans([]);
@@ -170,18 +220,18 @@ function SubscriptionApp() {
       console.log("subscriptionData:", subscriptionData);
 
       const result = await createSubscription(subscriptionData);
-      console.log('Subscription created:', result);
+      console.log("Subscription created:", result);
 
       if (result && result.paymentLink) {
-        console.log('Redirecting to payment link:', result.paymentLink);
+        console.log("Redirecting to payment link:", result.paymentLink);
         window.location.href = result.paymentLink;
       } else {
-        alert('❌ Failed to create subscription. Please try again.');
+        alert("❌ Failed to create subscription. Please try again.");
         setIsSubscribing(false);
       }
     } catch (error) {
-      console.error('Failed to create subscription:', error);
-      alert('❌ Failed to create subscription. Please try again.');
+      console.error("Failed to create subscription:", error);
+      alert("❌ Failed to create subscription. Please try again.");
       setIsSubscribing(false);
     }
   };
@@ -219,7 +269,9 @@ function SubscriptionApp() {
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-600 dark:text-gray-300">Loading subscription plans...</p>
+              <p className="text-gray-600 dark:text-gray-300">
+                Loading subscription plans...
+              </p>
             </div>
           </div>
         </div>
@@ -285,7 +337,8 @@ function SubscriptionApp() {
             ) : (
               <div className="space-y-3">
                 <p className="text-gray-700 dark:text-gray-300 text-lg font-medium">
-                  Configure your merchant credentials to load subscription plans.
+                  Configure your merchant credentials to load subscription
+                  plans.
                 </p>
                 <button
                   onClick={handleOpenConfig}

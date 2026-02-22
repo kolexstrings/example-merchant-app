@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   ReactNode,
@@ -7,12 +7,9 @@ import {
   useEffect,
   useMemo,
   useState,
-} from 'react';
-import { MerchantConfig, STORAGE_KEYS } from '@/lib/types';
-import {
-  applyMerchantConfig,
-  clearMerchantConfigOverride,
-} from '@/lib/api';
+} from "react";
+import { MerchantConfig, STORAGE_KEYS } from "@/lib/types";
+import { applyMerchantConfig, clearMerchantConfigOverride } from "@/lib/api";
 
 interface MerchantConfigContextValue {
   config: MerchantConfig | null;
@@ -22,16 +19,16 @@ interface MerchantConfigContextValue {
   clearConfig: () => void;
 }
 
-const MerchantConfigContext = createContext<MerchantConfigContextValue | undefined>(
-  undefined
-);
+const MerchantConfigContext = createContext<
+  MerchantConfigContextValue | undefined
+>(undefined);
 
 export function MerchantConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfigState] = useState<MerchantConfig | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return;
     }
 
@@ -39,13 +36,23 @@ export function MerchantConfigProvider({ children }: { children: ReactNode }) {
       const storedConfig = localStorage.getItem(STORAGE_KEYS.MERCHANT_CONFIG);
       if (storedConfig) {
         const parsedConfig = JSON.parse(storedConfig) as MerchantConfig;
-        setConfigState({
-          apiKey: parsedConfig.apiKey,
-          walletAddress: parsedConfig.walletAddress,
-        });
+        const sanitizedConfig: MerchantConfig = {
+          apiKey:
+            parsedConfig.apiKey?.trim?.() ??
+            String(parsedConfig.apiKey || "").trim(),
+          walletAddress:
+            parsedConfig.walletAddress?.trim?.() ??
+            String(parsedConfig.walletAddress || "").trim(),
+        };
+
+        setConfigState(sanitizedConfig);
+        applyMerchantConfig(sanitizedConfig);
       }
     } catch (error) {
-      console.error('Failed to parse merchant configuration from storage:', error);
+      console.error(
+        "Failed to parse merchant configuration from storage:",
+        error,
+      );
     } finally {
       setIsLoaded(true);
     }
@@ -58,25 +65,27 @@ export function MerchantConfigProvider({ children }: { children: ReactNode }) {
     };
 
     setConfigState(sanitizedConfig);
+    applyMerchantConfig(sanitizedConfig);
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(
         STORAGE_KEYS.MERCHANT_CONFIG,
-        JSON.stringify(sanitizedConfig)
+        JSON.stringify(sanitizedConfig),
       );
     }
   };
 
   const clearConfig = () => {
     setConfigState(null);
-    if (typeof window !== 'undefined') {
+    clearMerchantConfigOverride();
+    if (typeof window !== "undefined") {
       localStorage.removeItem(STORAGE_KEYS.MERCHANT_CONFIG);
     }
   };
 
   const value = useMemo<MerchantConfigContextValue>(() => {
     const isConfigured = Boolean(
-      config?.apiKey?.trim() && config?.walletAddress?.trim()
+      config?.apiKey?.trim() && config?.walletAddress?.trim(),
     );
 
     return {
@@ -110,7 +119,9 @@ export function MerchantConfigProvider({ children }: { children: ReactNode }) {
 export function useMerchantConfig(): MerchantConfigContextValue {
   const context = useContext(MerchantConfigContext);
   if (!context) {
-    throw new Error('useMerchantConfig must be used within a MerchantConfigProvider');
+    throw new Error(
+      "useMerchantConfig must be used within a MerchantConfigProvider",
+    );
   }
   return context;
 }
